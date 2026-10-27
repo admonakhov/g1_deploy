@@ -1,0 +1,8 @@
+#!/bin/sh
+# Use a system installation if available, otherwise the project-local binary.
+UV_PYTHON_INSTALL_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/.tools/python"
+export UV_PYTHON_INSTALL_DIR
+if command -v uv >/dev/null 2>&1; then
+    exec uv "$@"
+fi
+exec "$(dirname "$0")/.tools/uv/bin/uv" "$@"

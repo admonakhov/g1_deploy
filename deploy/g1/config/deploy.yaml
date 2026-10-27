@@ -1,0 +1,18 @@
+# Shared policy runtime. Orientation flags match policy_deployment_ros2.
+step_dt: 0.02
+policy_hz: 50
+udp_host: 127.0.0.1
+udp_port: 9870
+buffer_delay_s: 0.0
+# After this gap use the initial WBC stance and keep waiting in teleop.
+stream_timeout_s: 1.0
+transition_duration_s: 2.0
+reference_smoothing_s: 0.08
+reference_max_speed: 5.0
+max_joint_speed: 5.0
+wbc_base_height: 0.8382
+initial_state: Passive
+enable_bad_orientation_passive: true
+bad_orientation_limit_rad: 1.0
+max_sensor_age_s: 0.08
+robot_defaults_yaml: robot_defaults.yaml

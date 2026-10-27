@@ -1,0 +1,12 @@
+.aws/
+.venv/
+.cache/
+.tools/
+.agents/
+.codex/
+__pycache__/
+__pychache__/
+*.pyc
+models/
+outputs/
+deploy/g1/build/

@@ -1,0 +1,266 @@
+# FSM behavior follows policy_deployment_ros2; DDS and camera inputs remain native.
+FSM:
+  _:
+    Passive:
+      id: 1
+    FixStand:
+      id: 2
+      type: SmoothStand
+    Idle:
+      id: 210
+      type: TrajLoco
+    Walk:
+      id: 212
+      type: TrajLoco
+    Teleop:
+      id: 202
+      type: WbcTeleop
+    TeleopArms:
+      id: 204
+      type: WbcTeleop
+    Run:
+      id: 214
+      type: TrajLoco
+    GetUp:
+      id: 206
+      type: VqGetUp
+  Passive:
+    transitions:
+      FixStand: LT + up.on_pressed
+    mode:
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    - 1
+    kd:
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+    - 3
+  FixStand:
+    kp:
+    - 100.0
+    - 100.0
+    - 100.0
+    - 150.0
+    - 40.0
+    - 40.0
+    - 100.0
+    - 100.0
+    - 100.0
+    - 150.0
+    - 40.0
+    - 40.0
+    - 200
+    - 200
+    - 200
+    - 40
+    - 40
+    - 40
+    - 40
+    - 40
+    - 40
+    - 40
+    - 40
+    - 40
+    - 40
+    - 40
+    - 40
+    - 40
+    - 40
+    kd:
+    - 2
+    - 2
+    - 2
+    - 4
+    - 2
+    - 2
+    - 2
+    - 2
+    - 2
+    - 4
+    - 2
+    - 2
+    - 5
+    - 5
+    - 5
+    - 10
+    - 10
+    - 10
+    - 10
+    - 10
+    - 10
+    - 10
+    - 10
+    - 10
+    - 10
+    - 10
+    - 10
+    - 10
+    - 10
+    ts:
+    - 0
+    - 3
+    qs:
+    - []
+    - - -0.1
+      - 0
+      - 0
+      - 0.3
+      - -0.2
+      - 0
+      - -0.1
+      - 0
+      - 0
+      - 0.3
+      - -0.2
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0.25
+      - 0
+      - 0.97
+      - 0.15
+      - 0
+      - 0
+      - 0
+      - -0.25
+      - 0
+      - 0.97
+      - -0.15
+      - 0
+      - 0
+    transitions:
+      Passive: LT + B.on_pressed
+      GetUp: LT + up.on_pressed
+      Walk: RB + !LB + !LT + !RT + X.on_pressed
+      Run: RB + !LB + !LT + !RT + Y.on_pressed
+      Teleop: RT + !LT + !RB + !LB + A.on_pressed
+      TeleopArms: RT + !LT + !RB + !LB + X.on_pressed
+      Idle: LB + !RB + !LT + up.on_pressed
+  Idle:
+    transitions:
+      Passive: LT + B.on_pressed
+      FixStand: LT + up.on_pressed
+      Walk: RB + !LB + !LT + !RT + X.on_pressed
+      Run: RB + !LB + !LT + !RT + Y.on_pressed
+      Teleop: RT + !LT + !RB + !LB + A.on_pressed
+      TeleopArms: RT + !LT + !RB + !LB + X.on_pressed
+    policy_dir: ../policies/traj_loco
+    idle_only: true
+    enable_bad_orientation_passive: false
+  Walk:
+    transitions:
+      Passive: LT + B.on_pressed
+      FixStand: LT + up.on_pressed
+      Run: RB + !LB + !LT + !RT + Y.on_pressed
+      Teleop: RT + !LT + !RB + !LB + A.on_pressed
+      TeleopArms: RT + !LT + !RB + !LB + X.on_pressed
+      Idle: LB + !RB + !LT + up.on_pressed
+    policy_dir: ../policies/traj_loco
+    idle_only: false
+    enable_bad_orientation_passive: false
+    velocity_limits:
+      forward: 1.5
+      backward: 0.5
+      lateral: 1.0
+  Teleop:
+    transitions:
+      Passive: LT + B.on_pressed
+      FixStand: LT + up.on_pressed
+      Walk: RB + !LB + !LT + !RT + X.on_pressed
+      Run: RB + !LB + !LT + !RT + Y.on_pressed
+      TeleopArms: RT + !LT + !RB + !LB + X.on_pressed
+      Idle: LB + !RB + !LT + up.on_pressed
+    policy_dir: ../policies/wbc
+    retarget_scope: wholebody
+    failure_state: Walk
+    enable_bad_orientation_passive: true
+  TeleopArms:
+    transitions:
+      Passive: LT + B.on_pressed
+      FixStand: LT + up.on_pressed
+      Walk: RB + !LB + !LT + !RT + X.on_pressed
+      Run: RB + !LB + !LT + !RT + Y.on_pressed
+      Teleop: RT + !LT + !RB + !LB + A.on_pressed
+      Idle: LB + !RB + !LT + up.on_pressed
+    policy_dir: ../policies/wbc
+    retarget_scope: arms
+    failure_state: Walk
+    enable_bad_orientation_passive: true
+  Run:
+    policy_dir: ../policies/traj_loco
+    idle_only: false
+    enable_bad_orientation_passive: false
+    velocity_limits:
+      forward: 4.0
+      backward: 0.5
+      lateral: 1.0
+      planar: 4.0
+    transitions:
+      Passive: LT + B.on_pressed
+      FixStand: LT + up.on_pressed
+      Walk: RB + !LB + !LT + !RT + X.on_pressed
+      Teleop: RT + !LT + !RB + !LB + A.on_pressed
+      TeleopArms: RT + !LT + !RB + !LB + X.on_pressed
+      Idle: LB + !RB + !LT + up.on_pressed
+  GetUp:
+    policy_dir: ../policies/getup
+    enable_bad_orientation_passive: false
+    return_state: Walk
+    transitions:
+      Passive: LT + B.on_pressed
+      FixStand: LT + up.on_pressed
+      Walk: RB + !LB + !LT + !RT + X.on_pressed

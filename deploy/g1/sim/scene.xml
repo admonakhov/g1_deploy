@@ -1,0 +1,1 @@
+<mujoco model="G1 policy regression"><include file="g1_29dof.xml"/><option timestep="0.002"/><worldbody><geom name="floor" type="plane" size="0 0 .05" friction="1 .005 .0001"/></worldbody></mujoco>

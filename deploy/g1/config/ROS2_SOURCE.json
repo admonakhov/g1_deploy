@@ -1,0 +1,11 @@
+{
+  "source": "/home/ant/Robots/policy_deployment_ros2/robots/g1_29dof_ros2_deploy",
+  "adaptation": "FSM lifecycle, independent linear PD FixStand, policy reset and orientation flags, WBC PD torque clipping; native DDS and camera UDP retained",
+  "files": {
+    "src/ros2_policy_deploy.cpp": "716ac32cf2d231d429dbabacd23bab4bd92cccbae19fb578f72cd78f5d577d7a",
+    "src/wbc/pd_torque_clip.cpp": "a8c6835d93caba0d97e19bf25d24420a48b4f6dbaa408a12a17e518fd354ab60",
+    "config/policy_config.yaml": "a29ed2d85391e3de453838578541d66d5b8a21164be25b9d266d377031628a3a",
+    "config/robot_defaults.yaml": "111abe53dcde89027e66ed49eb23ca3b744d767883057e20b57e9adafbe02853",
+    "config/deploy.yaml": "95d322ee1fd123d3a78996206fec912512dd86ddd0a8a86e05350f3a255df93f"
+  }
+}

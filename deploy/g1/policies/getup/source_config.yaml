@@ -1,0 +1,167 @@
+# ai_sport FsmPunchMode (FSM 505, G1 EDU 29-DOF; entered 4 -> 802 -> SetFsmId 505; the scheduler needs the EDU
+# /unitree/robot/basic/ver and robot_type "18", seeded by the bring-up - no binary patch). Config
+# policies/punch_mode/fsm_config.yaml. Decoded from the humanoid binary (fsm_punch_mode.cpp) and verified on the bench
+# MNN captures (captures_154/probe6/505, 505full, 505b) - details in src/core/drivers/g1_punch.ts:
+#   p_obs 10 x 75 (oldest first) = gyro*0.2, projected gravity, q-default, dq*0.05, last action over the 23 joints
+#   without wrists; wrists held at 0. target = default + clip(act, +-20); kp/kd = config.
+#   walking: g1_punch_walk_12500 decoder, cmd 163 = anchor_motion_latent + 10 path blocks + block 0 (block = path - odom
+#   in the yaw frame, 0, rot6d(Rz(yaw_i) R^T)); twist speed level 1 (0.8 / 0.6 / 2.0 max, accel 1.2 / 1 / 4),
+#   estimator odometry (cmd [0.5]).
+#   moves: remote combo -> take CSV rows round(t_start*50)..round(t_end*50), cmd 73 = [latent(64) raw, 0,0,0
+#   (mask_root_pos_error), rot6d(q_off q_ref q_robot^-1)] on punch_29dof_28000 (punches, entry clip) or
+#   punch_29dof_add_getup_46000 (L2+Down get down, L2+Up get up). Fall protection: projected gravity z > -0.5 -> 2 s
+#   blend to front/back_down_jpos with the action zeroed, until L2+Up. On the robot bare keys need a double press.
+# Web: the named action buttons in the panel (control_ui.actions), G / Shift+G, or the pad combo (LB/RB/LT/RT = L1/R1/L2/R2).
+name: punch_mode/g1_punch_walk_12500_decoder
+robot: g1
+family: g1_mimic_vq
+control: {step_dt: 0.02, sim_dt: 0.0005, duration: 60.0}
+policy: {path: assets/policies/g1/punch_mode/g1_punch_walk_12500_decoder.mnn, arch: vq, num_obs: 750, num_act: 23}
+g1:
+  models: [edu]   # G1 variants it runs on (Air = machinetype 4, EDU = 5)
+  obs_scheme: punch
+  fsm_id: 505
+  control_joints: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 22, 23, 24, 25]
+  num_obs: 75
+  num_act: 23
+  memory_size: 10
+  default_dof_pos: [-0.3, 0.0, 0.0, 0.6, -0.3, 0.0, -0.3, -0.0, 0.0, 0.6, -0.3, 0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.0, 0.97, 0.0, 0.0, 0.0, 0.3, -0.3, 0.0, 0.97, 0.0, 0.0, 0.0]
+  action_scale: 1.0
+  kp: [40.2, 99.1, 40.2, 99.1, 28.5, 28.5, 40.2, 99.1, 40.2, 99.1, 28.5, 28.5, 40.2, 28.5, 28.5, 14.3, 14.3, 14.3, 14.3, 14.3, 16.8, 16.8, 14.3, 14.3, 14.3, 14.3, 14.3, 16.8, 16.8]
+  kd: [2.6, 6.3, 2.6, 6.3, 1.8, 1.8, 2.6, 6.3, 2.6, 6.3, 1.8, 1.8, 2.6, 1.8, 1.8, 0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1, 0.9, 0.9, 0.9, 0.9, 0.9, 1.1, 1.1]
+  tau: [88, 88, 88, 139, 50, 30, 88, 88, 88, 139, 50, 30, 88, 60, 60, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20]
+  vel_range: [-0.8, 0.8, -0.6, 0.6, -2.0, 2.0]
+  aux_models:
+    estimator: assets/policies/g1/punch_mode/g1_punch_walk_12500_estimator.mnn
+    punch: assets/policies/g1/punch_mode/punch_29dof_28000_decoder.mnn
+    getup: assets/policies/g1/punch_mode/punch_29dof_add_getup_46000_decoder.mnn
+  aux_files:   # one per distinct take (the firmware's *_clip_* / *_getdown files are byte-identical copies)
+    t007_70_128: assets/policies/g1/punch_mode/punch_29dof/vq_Take_007_skeleton_0_G1_50hz_clip_70_128.csv
+    t026: assets/policies/g1/punch_mode/punch_29dof/vq_Take_026_skeleton_0_G1_50hz.csv
+    t007: assets/policies/g1/punch_mode/punch_29dof/vq_Take_007_skeleton_0_G1_50hz.csv
+    t018: assets/policies/g1/punch_mode/punch_29dof/vq_Take_018_skeleton_0_G1_50hz.csv
+    t042: assets/policies/g1/punch_mode/punch_29dof/vq_Take_042_skeleton_0_G1_50hz.csv
+    t035: assets/policies/g1/punch_mode/punch_29dof/vq_Take_035_skeleton_0_G1_50hz.csv
+    t051: assets/policies/g1/punch_mode/punch_29dof/vq_Take_051_skeleton_0_G1_50hz.csv
+    t093: assets/policies/g1/punch_mode/punch_29dof/vq_Take_093_skeleton_0_G1_50hz.csv
+    t090: assets/policies/g1/punch_mode/punch_29dof/vq_Take_090_skeleton_0_G1_50hz.csv
+    t094: assets/policies/g1/punch_mode/punch_29dof/vq_Take_094_skeleton_0_G1_50hz.csv
+    t057: assets/policies/g1/punch_mode/punch_29dof/vq_Take_057_skeleton_0_G1_50hz.csv
+    t012: assets/policies/g1/punch_mode/punch_29dof/vq_Take_012_skeleton_0_G1_50hz.csv
+    t061: assets/policies/g1/punch_mode/punch_29dof/vq_Take_061_skeleton_0_G1_50hz.csv
+    t067: assets/policies/g1/punch_mode/punch_29dof/vq_Take_067_skeleton_0_G1_50hz.csv
+  punch:
+    anchor: [0.0874, 0.0551, -0.3072, -0.2419, 0.1617, 0.0718, 0.0546, -0.141, -0.3694, -0.2172, -0.0945, -0.1968, 0.3416, -0.2095, 0.1139, 0.2609, -0.1842, -0.3855, -0.0516, -0.253, -0.3124, 0.0071, -0.1973, 0.0994, -0.0111, -0.1426, 0.2611, 0.4341, -0.2827, 0.3748, 0.157, -0.2262, 0.2244, -0.1095, 0.0073, 0.0579, -0.2101, 0.2793, 0.2907, 0.268, 0.0558, -0.1675, -0.2013, 0.0915, 0.0355, -0.0688, -0.0737, -0.1648, 0.1064, -0.2025, -0.0768, 0.0434, -0.3865, -0.1169, 0.0899, -0.0921, 0.2434, -0.1343, -0.1868, 0.1036, 0.0006, -0.2079, 0.3298, -0.1664]
+    max_v: [0.8, 0.6, 2.0]      # twist_max_v at speed level 1 (L1 / L2 double press -> level 2; level 0 is never used)
+    max_acc: [1.2, 1.0, 4.0]
+    low_acc_pts: [0.5, 1.0]
+    deadzone: [0.1, 0.1, 0.1]
+    back_v_max: 1.5
+    omega_drop_scale: 2.0
+    ema_alpha: 0.3
+    num_path_points: 10
+    dt_path_points: 0.1
+    estimator_cmd: 0.5
+    latent_dim: 64
+    default_traj: vq_Take_007_skeleton_0_G1_50hz_clip_70_128   # played at FSM entry
+    front_get_up: vq_Take_061_skeleton_0_G1_50hz   # fallen face up (projected gravity x < -0.1)
+    back_get_up: vq_Take_067_skeleton_0_G1_50hz    # fallen face down
+    get_up_return_state: Punch_mode
+    disable_bad_orientation_during_get_up: true
+    projected_gravity_protect: -0.5
+    fall_down_length: 2.0
+    front_down_jpos: [-0.190124, 0.223897, -0.14598, 0.171729, 0.521754, -0.199589, -0.123377, -0.18007, -0.184985, 0.158468, 0.274736, 0.041625, -0.032066, -0.00879, 0.045685, 0.060866, 0.410945, -0.628261, 1.449367, 0.083018, 0.0, 0.0, 0.069134, -0.449357, 0.856743, 1.496662, 0.234809, 0.0, 0.0]
+    back_down_jpos: [-0.054021, 0.178117, -0.092344, 0.416411, -0.044535, 0.024953, 0.026391, -0.248594, -0.309998, 0.403359, -0.197168, 0.078901, 0.009205, -0.00903, 0.084577, 0.083274, 0.65208, -0.673362, 1.497737, -0.145939, 0.0, 0.0, 0.265346, -0.55245, 0.403167, 1.467075, 0.160453, 0.0, 0.0]
+    replace_rows: 10   # a combo may replace the playing move within its last 10 rows
+    combos:   # motion_string_map: first-listed key pressed while the modifier is held
+      "R1+Down": vq_Take_007_skeleton_0_G1_50hz_clip_386_442
+      "R1+Left": vq_Take_007_skeleton_0_G1_50hz_clip_325_381
+      "R1+Right": vq_Take_007_skeleton_0_G1_50hz_clip_264_308
+      "R1+Select": vq_Take_026_skeleton_0_G1_50hz_clip_270_413
+      "R1+Up": vq_Take_007_skeleton_0_G1_50hz_clip_195_240
+      "R2+Down": vq_Take_018_skeleton_0_G1_50hz_clip_1350_1470
+      "R2+Left": vq_Take_018_skeleton_0_G1_50hz_clip_756_928
+      "R2+Right": vq_Take_018_skeleton_0_G1_50hz_clip_940_1110
+      "R2+Up": vq_Take_018_skeleton_0_G1_50hz_clip_368_540
+      "L1+Down": vq_Take_012_skeleton_0_G1_50hz_clip_408_474
+      "L1+Left": vq_Take_012_skeleton_0_G1_50hz_clip_751_827
+      "L1+Right": vq_Take_012_skeleton_0_G1_50hz_clip_490_565
+      "L1+Up": vq_Take_012_skeleton_0_G1_50hz_clip_837_912
+      "L2+Down": vq_Take_061_skeleton_0_G1_50hz_getdown
+      "A": vq_Take_093_skeleton_0_G1_50hz_clip_190_306
+      "B": vq_Take_090_skeleton_0_G1_50hz_clip_214_336
+      "Down": vq_Take_051_skeleton_0_G1_50hz_clip_395_425
+      "Left": vq_Take_051_skeleton_0_G1_50hz_clip_285_330
+      "Right": vq_Take_051_skeleton_0_G1_50hz_clip_460_505
+      "Up": vq_Take_035_skeleton_0_G1_50hz_clip_240_290
+      "X": vq_Take_057_skeleton_0_G1_50hz_clip_244_480
+      "Y": vq_Take_094_skeleton_0_G1_50hz_clip_287_570
+    trajs:    # offline_trajs [fps, rot_detect, cool_time, t_start, t_end, api_id]
+      vq_Take_007_skeleton_0_G1_50hz_clip_70_128: {file: t007_70_128, rot_detect: 1, net: punch}
+      vq_Take_026_skeleton_0_G1_50hz_clip_270_413: {file: t026, start: 5.4, end: 8.26, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_007_skeleton_0_G1_50hz_clip_195_240: {file: t007, start: 3.9, end: 4.8, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_007_skeleton_0_G1_50hz_clip_264_308: {file: t007, start: 5.28, end: 6.16, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_007_skeleton_0_G1_50hz_clip_325_381: {file: t007, start: 6.5, end: 7.65, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_007_skeleton_0_G1_50hz_clip_386_442: {file: t007, start: 7.72, end: 8.84, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_018_skeleton_0_G1_50hz_clip_368_540: {file: t018, start: 7.36, end: 10.8, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_018_skeleton_0_G1_50hz_clip_756_928: {file: t018, start: 15.12, end: 18.56, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_018_skeleton_0_G1_50hz_clip_940_1110: {file: t018, start: 18.8, end: 22.2, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_018_skeleton_0_G1_50hz_clip_1350_1470: {file: t018, start: 27, end: 29.4, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_042_skeleton_0_G1_50hz_clip_346_475: {file: t042, start: 6.92, end: 9.5, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_035_skeleton_0_G1_50hz_clip_240_290: {file: t035, start: 4.8, end: 5.8, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_051_skeleton_0_G1_50hz_clip_285_330: {file: t051, start: 5.7, end: 6.6, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_051_skeleton_0_G1_50hz_clip_460_505: {file: t051, start: 9.2, end: 10.1, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_051_skeleton_0_G1_50hz_clip_395_425: {file: t051, start: 7.9, end: 8.5, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_093_skeleton_0_G1_50hz_clip_190_306: {file: t093, start: 3.8, end: 6.12, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_090_skeleton_0_G1_50hz_clip_214_336: {file: t090, start: 4.28, end: 6.72, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_094_skeleton_0_G1_50hz_clip_287_570: {file: t094, start: 5.74, end: 11.4, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_057_skeleton_0_G1_50hz_clip_244_480: {file: t057, start: 4.88, end: 9.2, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_012_skeleton_0_G1_50hz_clip_837_912: {file: t012, start: 16.74, end: 18.24, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_012_skeleton_0_G1_50hz_clip_751_827: {file: t012, start: 15.02, end: 16.54, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_012_skeleton_0_G1_50hz_clip_490_565: {file: t012, start: 9.8, end: 11.3, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_012_skeleton_0_G1_50hz_clip_408_474: {file: t012, start: 8.16, end: 9.48, fps: 50, rot_detect: 1, net: punch}
+      vq_Take_061_skeleton_0_G1_50hz: {file: t061, start: 4.24, end: 6.9, fps: 50, rot_detect: 0, net: getup}
+      vq_Take_067_skeleton_0_G1_50hz: {file: t067, start: 5.76, end: 9.16, fps: 50, rot_detect: 0, net: getup}
+      vq_Take_061_skeleton_0_G1_50hz_getdown: {file: t061, start: 0.7, end: 2.52, fps: 50, rot_detect: 0, net: getup}
+control_ui:
+  notice:
+    title: "Fight mode (FSM 505 PunchMode)"
+    text: "This policy is a fight mode. The robot stands in a boxing guard and walks with the stick (W A S D / Q E or the left / right stick).\n\nTo fight, choose a move from the Moves list in the panel: hand strikes, hand combos, leg kicks, footwork, gestures and get down / get up. G / Shift+G steps through the moves, or use the robot's remote-controller shortcut shown when you hover a button (on a gamepad LB/RB/LT/RT = L1/R1/L2/R2).\n\nAfter a fall the robot stays down until you pick Get up."
+  # Action names from the motion each clip produces (simulated with refs/vq2/ref505.py: which hand / foot moves,
+  # reach, foot height, turn); the combo is the robot remote-controller shortcut (single keys = double press).
+  actions:
+    - group: "Hand strikes"
+      items:
+        - {combo: "R1+Up", label: "Left jab"}
+        - {combo: "R1+Left", label: "Left hook"}
+        - {combo: "R1+Right", label: "Right hook"}
+        - {combo: "R1+Down", label: "Right power punch"}
+        - {combo: "R1+Select", label: "Punch flurry"}
+    - group: "Hand combos"
+      items:
+        - {combo: "L1+Up", label: "One-two combo"}
+        - {combo: "L1+Left", label: "Left-lead combo"}
+        - {combo: "L1+Right", label: "Right-lead combo"}
+        - {combo: "L1+Down", label: "Right-heavy combo"}
+    - group: "Leg kicks"
+      items:
+        - {combo: "R2+Up", label: "Left front kick"}
+        - {combo: "R2+Down", label: "Right roundhouse kick"}
+        - {combo: "R2+Left", label: "Left spinning kick"}
+        - {combo: "R2+Right", label: "Right spinning kick"}
+    - group: "Footwork"
+      items:
+        - {combo: "Up", label: "Step in & pivot"}
+        - {combo: "Down", label: "Step back"}
+        - {combo: "Left", label: "Side-step left"}
+        - {combo: "Right", label: "Side-step right"}
+    - group: "Gestures"
+      items:
+        - {combo: "A", label: "Left arm sweep"}
+        - {combo: "B", label: "Left arm wave"}
+        - {combo: "X", label: "Guard bounce"}
+        - {combo: "Y", label: "Guard shuffle"}
+    - group: "Ground"
+      items:
+        - {combo: "L2+Down", label: "Get down"}
+  trigger_keys: ["R1+Down", "R1+Left", "R1+Right", "R1+Select", "R1+Up", "R2+Down", "R2+Left", "R2+Right", "R2+Up", "L1+Down", "L1+Left", "L1+Right", "L1+Up", "L2+Down", "A", "B", "Down", "Left", "Right", "Up", "X", "Y"]

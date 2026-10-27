@@ -1,0 +1,17 @@
+{
+  "source": "/home/ant/Robots/policy_deployment_ros2/robots/g1_29dof_ros2_deploy",
+  "files": {
+    "wbc/params/config.yaml": "a646687843846d417d24d6b2c9f3a4dc51343d149491f63478363f6e3112fb17",
+    "wbc/params/policy.onnx": "4edfd35c156cce98c899062ec32e8fd7e4826fe00c9b4056b43d73a6e8a26f1f",
+    "traj_loco/config.yaml": "3f03578ca132d5a9fd40942153f92c661d8714c7e919706a07910b42e1c0e111",
+    "traj_loco/pack.json": "3ba594086cffb28feae0bdef31225e5936065e711cb76b31917e0d7072f8a864",
+    "traj_loco/aux/estimator.onnx": "ae7adc7585e729613789cff86e8c021c6441a6902a3e466dcc6a22875061019a",
+    "traj_loco/aux/stand_adjust.onnx": "8b8c1306ff0e8d28f6ca0f1e84e397a24c30d9d6e173faceb15feb2df24c6610",
+    "traj_loco/checkpoints/2026-02-27_18-31-24_decoder.onnx": "a8c4e47a64839e888afbec952c403b99e205dcb1dac3358eff26b5922b24a36c",
+    "getup/aux/getup.onnx": "da091795f1f1de62bc47a5277df6c6d84c5119d1d6f2e25564979d8e86cff291",
+    "getup/aux/t061.csv": "5ada5071759f086e134541f679ff5e233b23e81c9b65c7139e2f6b7a6b9ab452",
+    "getup/aux/t067.csv": "06c4d1e29a3091924013f286b34e67f75001472f58b25b0c4207916b12ad52ee",
+    "getup/source_config.yaml": "30fcd26399cbddd2636174197d1717b2dbf43756ea82def1e4a96a1074c43112"
+  },
+  "getup_source": "/home/ant/Robots/policy_deployment_ros2/robots/g1_29dof_ros2_deploy/config/policy/vq/punch_mode"
+}

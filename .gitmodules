@@ -1,0 +1,3 @@
+[submodule "vitpose"]
+	path = vitpose
+	url = https://github.com/JunkyByte/easy_ViTPose.git
