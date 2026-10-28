@@ -1,29 +1,24 @@
 #pragma once
 #include "WbcPolicy.hpp"
-#include "ReferenceTransition.hpp"
-#include "ReferenceSmoother.hpp"
 #include "CameraReferenceScope.hpp"
-#include "CommandLimits.hpp"
-#include "RobotChecks.hpp"
 #include "PdTorqueClip.hpp"
+#include "RobotChecks.hpp"
 
 namespace teleop {
+// WBC consumes the trained 39-D reference verbatim. No EMA, joint slew,
+// height/speed clamp, entry blend or motor-position clipping is applied here.
 class WbcControl {
     WbcPolicy policy_;
     PdTorqueClip torque_clip_;
-    ReferenceTransition transition_;
-    ReferenceSmoother smoother_;
     CameraReferenceScope scope_;
-    CommandLimits limits_{std::string(TELEOP_ROOT)+"/deploy/g1/config/joint_limits.json"};
-    double height_,previous_=0.,filtered_height_=0.,tau_;
-    Eigen::Quaterniond previous_anchor_=Eigen::Quaterniond::Identity();
+    double height_;
     WbcReference reference_;
     bool waiting_for_camera_=true;
 public:
-    explicit WbcControl(const YAML::Node& cfg):policy_(cfg["policy_dir"].as<std::string>()),torque_clip_(cfg["pd_torque_clipping"]),
-        transition_(cfg["transition_duration_s"].as<double>()),smoother_(cfg["reference_smoothing_s"].as<double>(),cfg["reference_max_speed"].as<double>()),
-        scope_(cfg["retarget_scope"].as<std::string>("wholebody")),height_(cfg["wbc_base_height"].as<double>()),tau_(cfg["reference_smoothing_s"].as<double>()){
-        if(!std::isfinite(height_)||height_<.4||height_>1.3)throw std::runtime_error("Invalid WBC torso reference height");
+    explicit WbcControl(const YAML::Node& cfg):policy_(cfg["policy_dir"].as<std::string>()),
+        torque_clip_(cfg["pd_torque_clipping"]),scope_(cfg["retarget_scope"].as<std::string>("wholebody")),
+        height_(cfg["wbc_base_height"].as<double>()) {
+        if(!std::isfinite(height_))throw std::runtime_error("Invalid WBC torso reference height");
     }
     const PolicyParams& params()const{return policy_.params();}
     const WbcReference& reference()const{return reference_;}
@@ -33,52 +28,45 @@ public:
         return (ref.root*Eigen::AngleAxisd(ref.q[12],Eigen::Vector3d::UnitZ())
             *Eigen::AngleAxisd(ref.q[13],Eigen::Vector3d::UnitX())*Eigen::AngleAxisd(ref.q[14],Eigen::Vector3d::UnitY())).normalized();
     }
-    void begin(const RobotState& measured,double now){
-        policy_.reset();waiting_for_camera_=true;previous_=now;filtered_height_=height_;Reference target;target.q=params().defaults;
-        transition_.begin(measured,target,now);smoother_.reset();
-        Reference start;start.q=measured.q;start.root=heading(measured.root).conjugate()*measured.root;
-        previous_anchor_=torso_orientation(start);
-        reference_={};reference_.q=measured.q;reference_.height=height_;
-        reference_.gravity=previous_anchor_.conjugate()*-Eigen::Vector3d::UnitZ();
+    void begin(const RobotState&,double){
+        policy_.reset();waiting_for_camera_=true;reference_={};reference_.q=params().defaults;reference_.height=height_;
     }
-    Joints step(const RobotState& measured,Reference camera,double now,bool check_orientation=true){
-        validate_robot_state(measured,check_orientation);const double dt=std::clamp(now-previous_,0.,.1);
+    Joints step(const RobotState& measured,Reference camera,double,bool check_orientation=true){
+        validate_robot_state(measured,check_orientation);
         waiting_for_camera_=!camera.ready||camera.stale||camera.stopped;
-        if(waiting_for_camera_){
-            // Missing camera data is a reference condition, not a policy fault.
-            // Keep the learned balance controller and its history running; the
-            // existing transition/smoother handles both loss and resumption.
-            camera.q=params().defaults;camera.dq.setZero();camera.active.fill(false);
-            camera.root=Eigen::Quaterniond::Identity();camera.base_tracked=false;
-        }
-        // Every absent goal falls back to the policy stance, never to inferred
-        // hidden human joints. Learned body corrections still remain active.
+        if(waiting_for_camera_){camera=Reference{};camera.q=params().defaults;}
         for(int i=0;i<29;++i)if(!camera.active[i]){camera.q[i]=params().defaults[i];camera.dq[i]=0.;}
-        if(!camera.base_tracked)camera.root=Eigen::Quaterniond::Identity();
+        if(!camera.base_tracked){camera.root=Eigen::Quaterniond::Identity();camera.root_angular_world.setZero();}
         std::array<Reference,10> frames;frames.fill(camera);frames=scope_.apply(frames);
-        for(auto& frame:frames)frame.active.fill(true); // explicit stance goals for absent parts
-        const auto transitioned=transition_.sample(frames,now);frames=smoother_.sample(transitioned,dt);scope_.restore_stance(frames,transitioned);
-        const auto& ref=frames[0];const auto anchor=torso_orientation(ref);
+        const auto& ref=frames[0];
         reference_={};reference_.q=ref.q;reference_.height=height_;
-        // torso_link offset for the GMR G1 model; raw translation is used only
-        // when both full leg chains were observed. Arms keeps the fixed height.
-        if(ref.base_tracked){
-            const auto yaw=ref.root*Eigen::AngleAxisd(ref.q[12],Eigen::Vector3d::UnitZ());
-            const auto roll=yaw*Eigen::AngleAxisd(ref.q[13],Eigen::Vector3d::UnitX());
-            reference_.height=std::clamp((ref.position+yaw*Eigen::Vector3d(-.0039635,0,.035)+roll*Eigen::Vector3d(0,0,.009)).z(),.4,1.2);
+        if(ref.torso.valid){
+            // TRACE sends the same torso link-origin FK/velocities as the
+            // training NPZ, including all three linear and angular components.
+            const auto inverse=ref.torso.orientation.conjugate();
+            reference_.height=ref.torso.position.z();
+            reference_.linear=inverse*ref.torso.linear;
+            reference_.angular=inverse*ref.torso.angular;
+            reference_.gravity=inverse*-Eigen::Vector3d::UnitZ();
+        }else{
+            const Eigen::Quaterniond yaw=ref.root*Eigen::AngleAxisd(ref.q[12],Eigen::Vector3d::UnitZ());
+            const Eigen::Quaterniond roll=yaw*Eigen::AngleAxisd(ref.q[13],Eigen::Vector3d::UnitX());
+            const auto anchor=torso_orientation(ref);
+            reference_.gravity=anchor.conjugate()*-Eigen::Vector3d::UnitZ();
+            if(ref.base_tracked){
+                // Training G1: the full 44 mm offset belongs to waist_roll_link
+                // before roll/pitch. GMR's 35+9 mm chain is a different asset.
+                const Eigen::Vector3d offset=yaw*Eigen::Vector3d(-.0039635,0.,.044);
+                reference_.height=(ref.position+offset).z();
+                const Eigen::Vector3d yaw_omega=ref.root_angular_world+ref.dq[12]*(ref.root*Eigen::Vector3d::UnitZ());
+                const Eigen::Vector3d omega=yaw_omega+ref.dq[13]*(yaw*Eigen::Vector3d::UnitX())+ref.dq[14]*(roll*Eigen::Vector3d::UnitY());
+                reference_.linear=anchor.conjugate()*(ref.linear_velocity_world+yaw_omega.cross(offset));
+                reference_.angular=anchor.conjugate()*omega;
+            }
         }
-        reference_.gravity=anchor.conjugate()*-Eigen::Vector3d::UnitZ();
-        const double height_before=filtered_height_,a=tau_>0.?-std::expm1(-dt/tau_):1.;
-        filtered_height_+=std::clamp(a*(reference_.height-filtered_height_),-.5*dt,.5*dt);
-        reference_.height=filtered_height_;
-        if(dt>1e-6)reference_.linear=anchor.conjugate()*Eigen::Vector3d(0.,0.,(filtered_height_-height_before)/dt);
-        if(dt>1e-6){Eigen::Quaterniond delta=previous_anchor_.conjugate()*anchor;if(delta.w()<0.)delta.coeffs()*=-1.;
-            const Eigen::AngleAxisd aa(delta);reference_.angular=aa.axis()*aa.angle()/dt;
-            const double n=reference_.angular.norm();if(n>3.)reference_.angular*=3./n;}
-        previous_anchor_=anchor;previous_=now;
-        // Root translation is held by the existing camera retargeter. No camera
-        // walking velocity is synthesized for this in-place teleop mode.
-        return torque_clip_.apply(limits_.clamp(policy_.step(reference_,measured)),measured,params());
+        auto command=policy_.step(reference_,measured);
+        if(!command.allFinite())throw std::runtime_error("Invalid WBC motor command");
+        return torque_clip_.apply(command,measured,params());
     }
 };
 } // namespace teleop

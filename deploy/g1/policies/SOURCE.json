@@ -1,5 +1,5 @@
 {
-  "source": "/home/ant/Robots/policy_deployment_ros2/robots/g1_29dof_ros2_deploy",
+  "source": "policy_deployment_ros2/robots/g1_29dof_ros2_deploy",
   "files": {
     "wbc/params/config.yaml": "a646687843846d417d24d6b2c9f3a4dc51343d149491f63478363f6e3112fb17",
     "wbc/params/policy.onnx": "4edfd35c156cce98c899062ec32e8fd7e4826fe00c9b4056b43d73a6e8a26f1f",
@@ -13,5 +13,5 @@
     "getup/aux/t067.csv": "06c4d1e29a3091924013f286b34e67f75001472f58b25b0c4207916b12ad52ee",
     "getup/source_config.yaml": "30fcd26399cbddd2636174197d1717b2dbf43756ea82def1e4a96a1074c43112"
   },
-  "getup_source": "/home/ant/Robots/policy_deployment_ros2/robots/g1_29dof_ros2_deploy/config/policy/vq/punch_mode"
+  "getup_source": "policy_deployment_ros2/robots/g1_29dof_ros2_deploy/config/policy/vq/punch_mode"
 }

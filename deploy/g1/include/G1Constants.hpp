@@ -31,12 +31,23 @@ inline std::array<float, 6> rotation6d(const Eigen::Quaterniond& q) {
     const auto r = q.normalized().toRotationMatrix();
     return {float(r(0,0)), float(r(0,1)), float(r(1,0)), float(r(1,1)), float(r(2,0)), float(r(2,1))};
 }
+struct TorsoReference {
+    bool valid=false;
+    Eigen::Vector3d position=Eigen::Vector3d::Zero(),linear=Eigen::Vector3d::Zero(),angular=Eigen::Vector3d::Zero();
+    Eigen::Quaterniond orientation=Eigen::Quaterniond::Identity();
+};
 struct Reference {
     Joints q = standing(), dq = Joints::Zero();
     Mask active{};
     Eigen::Quaterniond root = Eigen::Quaterniond::Identity();
     Eigen::Vector3d position{0.,0.,.7842};
     bool base_tracked=false;
+    // Generated motion may request planar motion; camera references remain
+    // in-place unless they explicitly carry this complete motion contract.
+    Eigen::Vector3d linear_velocity_world=Eigen::Vector3d::Zero();
+    bool motion_reference=false;
+    Eigen::Vector3d root_angular_world=Eigen::Vector3d::Zero();
+    TorsoReference torso;
     double source_time = 0., alpha = 0., delay = 0.;
     int64_t previous_frame = -1, next_frame = -1;
     bool ready = false, stale = false, stopped = false;

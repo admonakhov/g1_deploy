@@ -60,11 +60,13 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--hand-threshold", type=float, default=.5, help="Hand detection/presence confidence")
     parser.add_argument("--retarget", action="store_true", help="Stream GMR inverse kinematics to Unitree G1")
     parser.add_argument("--robot", choices=("unitree_g1",), default="unitree_g1")
-    parser.add_argument("--udp", help="Publish robot JSON packets to HOST:PORT")
-    parser.add_argument("--udp-hz", type=float, default=50., help="Continuous UDP reference frequency (default: 50 Hz)")
+    transport = parser.add_mutually_exclusive_group()
+    transport.add_argument("--udp", help="Publish robot JSON packets to HOST:PORT")
+    transport.add_argument("--web", help="Publish references to the motion bridge, e.g. http://127.0.0.1:8765")
+    parser.add_argument("--udp-hz", type=float, default=50., help="Continuous UDP/HTTP reference frequency (default: 50 Hz)")
     parser.add_argument("--pose-timeout", type=float, default=.75, help="Use initial pose if no valid completed result arrives for this many seconds")
     parser.add_argument("--loss-grace", type=float, default=.35, help="Hold last valid reference across brief whole-pose losses (seconds)")
-    parser.add_argument("--max-joint-speed", type=float, default=5.0, help="Maximum per-joint reference speed in rad/s (default: 5)")
+    parser.add_argument("--max-joint-speed", type=float, default=0.0, help="Optional per-joint reference speed cap in rad/s (0: disabled)")
     parser.add_argument("--device", default=None, help="cpu, cuda, cuda:0 or mps; default: auto")
     parser.add_argument("--download-models", action="store_true", help="Download default models and exit")
     parser.add_argument("--threshold", type=float, default=0.5, help="Keypoint confidence threshold")
@@ -87,20 +89,20 @@ def arguments() -> argparse.Namespace:
         parser.error("--cpu-threads must be positive")
     if args.max_frames is not None and args.max_frames <= 0:
         parser.error("--max-frames must be positive")
-    if args.no_display and not (args.output or args.json or args.download_models or args.udp):
-        parser.error("--no-display requires --output, --json or --udp")
+    if args.no_display and not (args.output or args.json or args.download_models or args.udp or args.web):
+        parser.error("--no-display requires --output, --json, --udp or --web")
     if args.retarget and args.pose_view != "3d":
         parser.error("--retarget requires --pose-view 3d")
-    if args.udp and not args.retarget:
-        parser.error("--udp requires --retarget")
+    if (args.udp or args.web) and not args.retarget:
+        parser.error("--udp / --web requires --retarget")
     if not np.isfinite(args.udp_hz) or not 1 <= args.udp_hz <= 1000:
         parser.error("--udp-hz must be between 1 and 1000")
     if not np.isfinite(args.pose_timeout) or args.pose_timeout <= 0:
         parser.error("--pose-timeout must be finite and positive")
     if not np.isfinite(args.loss_grace) or not 0 <= args.loss_grace < args.pose_timeout:
         parser.error("--loss-grace must be nonnegative and shorter than --pose-timeout")
-    if not np.isfinite(args.max_joint_speed) or args.max_joint_speed <= 0:
-        parser.error("--max-joint-speed must be finite and positive")
+    if not np.isfinite(args.max_joint_speed) or args.max_joint_speed < 0:
+        parser.error("--max-joint-speed must be finite and nonnegative")
     if args.pose_view == "3d" and args.dataset not in ("coco", "coco_25", "wholebody"):
         parser.error("3D requires coco, coco_25 or wholebody; use --pose-view 2d for this dataset")
     return args
@@ -298,7 +300,7 @@ def _run_video(args, reader, publisher, stream_id):
         print(f"Device: {model.device}. CPU threads: {torch.get_num_threads()}. 3D: {lifter.model_name if lifter else 'off'}. Press Q / Esc to quit, TAB to select another person.", flush=True)
         if args.retarget:
             if publisher:
-                print(f"Deployment stream: UDP -> {args.udp} | {args.udp_hz:g} Hz | fallback: G1 initial stance", flush=True)
+                print(f"Deployment stream: {'HTTP' if args.web else 'UDP'} -> {args.web or args.udp} | {args.udp_hz:g} Hz | fallback: G1 initial stance", flush=True)
             else:
                 print("Deployment stream: OFF (retargeting preview only). "
                       "Add --udp 127.0.0.1:9870 to send poses to the deployment controller.", flush=True)
@@ -461,7 +463,7 @@ def _run_video(args, reader, publisher, stream_id):
                 if last_packet and last_packet.get('tracking_state') == 'holding':
                     stream_status = 'holding'
                 reason = f" ({last_packet['fallback_reason']})" if last_packet and stream_status == 'fallback' else ''
-                print(f"Camera UDP: {publish_fps:.1f} Hz | camera={camera_fps:.1f} FPS | valid={valid_fps:.1f} FPS | pose={stream_status}{reason} | "
+                print(f"Camera {'HTTP' if args.web else 'UDP'}: {publish_fps:.1f} Hz | camera={camera_fps:.1f} FPS | valid={valid_fps:.1f} FPS | pose={stream_status}{reason} | "
                       f"arms=L:{health['arm_joints']['left']}/R:{health['arm_joints']['right']} | failures={failure_report} | "
                       f"capture-to-pose={robot_packet['latency_s']:.3f} s | "
                       f"fallbacks={last_packet.get('fallback_entries', 0) if last_packet else 0} | "
@@ -494,12 +496,13 @@ def run(args):
     if args.output and isinstance(source,str) and "://" not in source and Path(source).resolve()==args.output.resolve():
         raise ValueError("Input and output video paths must be different")
     from video_teleop.stream_capture import RecoveringCapture
-    from video_teleop.teleop_stream import ContinuousPosePublisher, UDPPublisher, initial_reference
+    from video_teleop.teleop_stream import ContinuousPosePublisher, UDPPublisher, HTTPPublisher, initial_reference
     stream_id=uuid.uuid4().hex
     with ExitStack() as stack:
         publisher=None
-        if args.retarget and args.udp:
-            publisher=ContinuousPosePublisher(UDPPublisher(args.udp),initial_reference(),stream_id,
+        if args.retarget and (args.udp or getattr(args,"web",None)):
+            transport=HTTPPublisher(args.web) if getattr(args,"web",None) else UDPPublisher(args.udp)
+            publisher=ContinuousPosePublisher(transport,initial_reference(),stream_id,
                 hz=args.udp_hz,pose_timeout=args.pose_timeout,loss_grace=args.loss_grace)
             stack.callback(publisher.close)
             publisher.start()  # Before camera opening or expensive model initialization.

@@ -32,7 +32,7 @@ class ConfigTests(unittest.TestCase):
             c=yaml.safe_load(CONFIG.read_text());c['FSM']['_']['OldPolicy']={'id':999,'type':kind};c['FSM']['OldPolicy']={'transitions':{}}
             r=self.custom(c);self.assertEqual(r.returncode,1);self.assertIn('unsupported policy',r.stderr)
     def test_invalid_frequency_and_endpoint_fail_before_dds(self):
-        for field,value in (('policy_hz',30),('step_dt',.03),('udp_port',0),('udp_host','bad-host'),('stream_timeout_s',0.),('wbc_base_height',2.)):
+        for field,value in (('policy_hz',30),('step_dt',.03),('udp_port',0),('udp_host','bad-host'),('stream_timeout_s',0.),('wbc_base_height',float('nan'))):
             with self.subTest(field=field):
                 d=yaml.safe_load(DEPLOY.read_text());d[field]=value;r=self.custom(deploy=d)
                 self.assertEqual(r.returncode,1,r.stdout+r.stderr);self.assertNotIn('Waiting for G1',r.stdout)
@@ -60,6 +60,14 @@ class ConfigTests(unittest.TestCase):
     def test_obsolete_custom_entry_gates_fail_explicitly(self):
         c=yaml.safe_load(CONFIG.read_text());c['FSM']['Walk']['check_posture']=False
         r=self.custom(c);self.assertEqual(r.returncode,1);self.assertIn('enable_bad_orientation_passive',r.stderr)
+    def test_removed_wbc_reference_processing_fails_explicitly(self):
+        for field in ('transition_duration_s','reference_smoothing_s','reference_max_speed','max_joint_speed'):
+            with self.subTest(field=field):
+                d=yaml.safe_load(DEPLOY.read_text());d[field]=.1
+                r=self.custom(deploy=d);self.assertEqual(r.returncode,1);self.assertIn('Removed WBC',r.stderr)
+                c=yaml.safe_load(CONFIG.read_text());c['FSM']['Teleop'][field]=.1
+                r=self.custom(config=c);self.assertEqual(r.returncode,1);self.assertIn('Removed WBC',r.stderr)
+
     def test_camera_failure_routes_to_walk(self):
         for state in ('Teleop','TeleopArms'):
             c=yaml.safe_load(CONFIG.read_text());self.assertEqual(c['FSM'][state]['failure_state'],'Walk')

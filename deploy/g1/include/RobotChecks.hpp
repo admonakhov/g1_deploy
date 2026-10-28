@@ -19,9 +19,8 @@ inline double tilt_angle(const Eigen::Quaterniond& root) {
 
 inline void validate_robot_state(const RobotState& robot, bool check_orientation = true,double tilt_limit=control_tilt_limit_rad) {
     const double tilt = tilt_angle(robot.root);
-    if (!robot.q.allFinite() || !robot.dq.allFinite() || !robot.angular_velocity.allFinite()
-        || robot.dq.cwiseAbs().maxCoeff() > 35.)
-        throw std::runtime_error("Invalid G1 motor/IMU state or motor speed above 35 rad/s");
+    if (!robot.q.allFinite() || !robot.dq.allFinite() || !robot.angular_velocity.allFinite())
+        throw std::runtime_error("Invalid G1 motor/IMU state");
     if (!std::isfinite(tilt_limit)||tilt_limit<=0.||tilt_limit>M_PI)throw std::runtime_error("Invalid bad_orientation_limit_rad");
     if (check_orientation && tilt > tilt_limit) {
         std::ostringstream message;

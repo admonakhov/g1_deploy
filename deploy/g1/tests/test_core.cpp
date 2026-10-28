@@ -45,5 +45,15 @@ int main(){try{
  const auto partial=stream.sample(1.52);for(int i=0;i<6;++i)if(partial.active[i])return 11;
  if(!stream.sample(2.5).stale)return 8;
  packet["status"]="stopped";if(!stream.ingest(packet,2.4)||!stream.sample(2.4).stopped)return 9;
+ // Generated G1 references explicitly carry base velocity; camera packets do not.
+ packet["status"]="tracking";packet["stream_id"]="motion";packet["active_joint_mask"]=std::vector<bool>(29,true);
+ packet["base_tracked"]=true;packet["base_quaternion_order"]="wxyz";
+ std::vector<double> qpos(36,0.);qpos[2]=.7842;qpos[3]=1.;packet["qpos"]=qpos;
+ packet["reference_kind"]="motion";packet["base_linear_velocity_world"]={.4,.1,0.};
+ packet["frame"]=0;packet["reference_monotonic_s"]=3.;if(!stream.ingest(packet,3.))return 26;
+ packet["frame"]=1;packet["reference_monotonic_s"]=3.02;if(!stream.ingest(packet,3.02))return 27;
+ const auto moving=stream.sample(3.04);if(!moving.motion_reference||(moving.linear_velocity_world-Eigen::Vector3d(.4,.1,0.)).norm()>1e-8)return 28;
+ if(stream.sample(5.).motion_reference||stream.sample(5.).linear_velocity_world.norm()!=0.)return 29;
+ packet["base_linear_velocity_world"]={std::numeric_limits<double>::quiet_NaN(),0.,0.};packet["frame"]=2;packet["reference_monotonic_s"]=3.04;if(stream.ingest(packet,3.04))return 30;
  std::cout<<"Core transition and WBC contract passed\n";
  }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

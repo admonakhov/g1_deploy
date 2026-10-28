@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#eaf3f2">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%2710%27 fill=%27%2313b6a8%27/%3E%3Ccircle cx=%2716%27 cy=%2717%27 r=%278%27 fill=%27%230b3035%27/%3E%3Ccircle cx=%2719%27 cy=%2719%27 r=%272%27 fill=%27white%27/%3E%3C/svg%3E">
+<title>G1 deploy · Motion Studio</title>
+<link rel="stylesheet" href="/style.css?v=20261028-voice2">
+</head>
+<body>
+<svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+ <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+ <symbol id="i-motion" viewBox="0 0 24 24"><path d="M3 13h3l3-8 5 15 3-8h4"/></symbol>
+ <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></symbol>
+ <symbol id="i-cube" viewBox="0 0 24 24"><path d="m12 3 9 5v9l-9 5-9-5V8l9-5Zm0 10v9M3 8l9 5 9-5M8 5l9 5"/></symbol>
+ <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3ZM20 3v4M18 5h4"/></symbol>
+ <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+ <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7V5Z"/></symbol>
+ <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/></symbol>
+ <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></symbol>
+ <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="3"/><path d="m15 10 6-3v10l-6-3"/></symbol>
+ <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+ <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></symbol>
+ <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6Zm0 0v6h6M8 14h8M8 17h5"/></symbol>
+ <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></symbol>
+</defs></svg>
+<div class="app-shell">
+<header class="topbar">
+ <a class="brand" href="#studio" aria-label="G1 deploy — студия"><span class="brand-mark"><i></i></span><span>G1<span class="brand-light">deploy</span></span></a>
+ <nav class="topnav" aria-label="Основная навигация"><a class="nav-link current" href="#studio">Студия</a><a class="nav-link" href="#library">Движения</a><a class="nav-link" id="settings-link" href="#planner-panel">Настройки</a></nav>
+ <label class="search"><svg class="icon"><use href="#i-search"/></svg><input id="motion-search" type="search" placeholder="Найти движение" aria-label="Найти движение"></label>
+ <div id="connection" class="connection off"><span class="status-dot"></span><span id="connection-label">Подключение</span></div>
+ <div class="robot-avatar" title="Unitree G1, 29 суставов">G1</div>
+</header>
+<main id="studio">
+ <div class="page-heading"><div><div class="overline">РАБОЧЕЕ ПРОСТРАНСТВО / UNITREE G1</div><h1>Motion Studio<span class="heading-dot">.</span></h1><p>От идеи к движению. Всё под вашим контролем.</p></div><div class="workspace-badge"><span class="status-dot"></span> G1 · 29 DOF</div></div>
+ <div class="dashboard">
+  <aside id="library" class="panel library-panel">
+   <div class="section-heading"><div><h2>Ваши движения</h2><p class="small">Библиотека траекторий</p></div><span id="library-count" class="count-badge">0</span></div>
+   <div class="library-tabs" role="group" aria-label="Фильтр движений"><button class="active" data-filter="all">Все</button><button data-filter="ready">Готовые</button><button data-filter="running">В работе</button></div>
+   <div id="jobs" class="jobs"><div class="empty-state"><svg class="icon"><use href="#i-cube"/></svg><p>Ваше первое движение<br>начинается с идеи</p></div></div>
+   <div class="library-bottom"><svg class="icon"><use href="#i-download"/></svg><div><strong>Готово для обучения</strong><span>Каждая генерация → NPZ, 50 Гц</span></div></div>
+  </aside>
+  <div class="studio-column">
+   <div class="overview">
+    <section class="stream-card"><div class="card-heading"><span>Поток референсов</span><svg class="icon"><use href="#i-motion"/></svg></div><div class="stream-value"><strong id="hz">—</strong><span>Гц</span></div><div class="stream-bottom"><span id="stream-target">Целевая частота · 50 Гц</span><span class="live-pill">LIVE</span></div><svg class="stream-chart" viewBox="0 0 240 42" preserveAspectRatio="none" aria-label="История частоты потока"><path id="stream-area"/><path id="stream-line"/></svg></section>
+    <section class="source-card"><div class="card-heading"><span>Выбранный источник</span><span class="source-card-icon"><svg class="icon"><use href="#i-video"/></svg></span></div><strong id="selected-source">Ожидание</strong><div class="source-card-bottom"><span id="source-description">Поток для WBC</span><svg class="icon"><use href="#i-arrow"/></svg></div></section>
+   </div>
+   <section class="panel composer-panel">
+    <div class="section-heading"><div><div class="overline">TEXT TO MOTION</div><h2>Какое движение создадим?</h2></div><span class="round-icon"><svg class="icon"><use href="#i-spark"/></svg></span></div>
+    <label for="prompt" class="visually-hidden">Описание движения</label>
+    <textarea id="prompt" maxlength="2000" placeholder="Например: подними правую руку, помаши и вернись в стойку…"></textarea>
+    <div class="prompt-footer"><span>TRACE понимает движение по описанию</span><span id="prompt-count">0 / 2000</span></div>
+    <div class="voice-input" aria-label="Голосовое управление на русском">
+     <div class="voice-toolbar"><button id="voice-record" type="button" class="voice-button" aria-pressed="false" disabled><svg class="icon"><use href="#i-mic"/></svg><span id="voice-label">Голосовая команда</span><span class="voice-language">RU</span></button><button id="voice-cancel" class="small-button" type="button" hidden>Отменить запись</button></div>
+     <div class="voice-meter" aria-hidden="true"><span id="voice-level"></span></div>
+     <div id="voice-status" class="voice-status" role="status" aria-live="polite">Проверка голосового ввода…</div>
+     <div id="voice-transcript" class="voice-transcript" hidden></div>
+     <label class="check-label voice-execute"><input id="voice-execute" type="checkbox" checked><span>Выполнять голосовые команды сразу</span></label>
+     <details class="voice-help"><summary>Что можно сказать?</summary><p>«Помаши правой рукой», «сделай два шага назад» — создать движение. «Отмени генерацию», «включи видео», «стойка», «повтори движение». «Стоп» — пауза траектории TRACE, «продолжи» — продолжить. Пауза удерживает референс, политика WBC продолжает работать.</p><p>Нажмите микрофон и говорите. Запись завершится после паузы в речи или повторного нажатия. Аудио распознаётся локально и не сохраняется. Отправка движения в деплой зависит от переключателя ниже.</p></details>
+    </div>
+    <div class="examples"><button data-text="Slowly raise both hands in front of the body, then return to standing."><svg class="icon"><use href="#i-motion"/></svg>Поднять руки</button><button data-text="Wave the right hand to greet someone, then return to standing.">Помахать рукой</button><button data-text="Briefly bow forward, then return to standing.">Поклониться</button></div>
+    <div class="composer-divider"></div>
+    <div class="composer-options"><label class="check-label"><input id="autoplay" type="checkbox" checked><span>Отправить в деплой после генерации</span></label><span class="output-badge"><svg class="icon"><use href="#i-file"/></svg>NPZ</span></div>
+    <div class="action-row"><button id="generate" class="primary"><svg class="icon"><use href="#i-spark"/></svg>Сгенерировать движение<svg class="icon end-icon"><use href="#i-arrow"/></svg></button><button id="cancel" class="secondary" disabled>Отменить</button></div>
+    <div id="error" role="alert"></div>
+   </section>
+   <section class="panel preview-panel" id="preview-panel">
+    <div class="section-heading"><div><div class="overline">MOTION VIEWER</div><h2>3D-предпросмотр</h2></div><span class="subtle-badge">Только просмотр</span></div>
+    <div class="preview-stage"><canvas id="preview-canvas" aria-label="Трёхмерный скелет G1"></canvas><div class="viewer-label"><span class="status-dot"></span><span id="preview-title">Выберите движение из библиотеки</span></div><div class="viewer-legend"><span><i class="left-dot"></i>Левая</span><span><i class="right-dot"></i>Правая</span></div></div>
+    <div class="player-timeline"><input id="preview-seek" aria-label="Позиция в траектории" type="range" min="0" max="1" step="0.001" value="0" disabled><span id="preview-clock">0.00 / 0.00 с</span></div>
+    <div class="player-toolbar"><div><button id="preview-play" class="small-button dark-button" disabled>Играть</button><button id="preview-reset" class="small-button" disabled>В начало</button></div><label class="speed-select">Скорость<select id="preview-speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label></div>
+    <p class="viewer-hint">Мышь — поворот · колесо — масштаб. Предпросмотр не отправляет команды в деплой.</p>
+   </section>
+   <pre id="log" aria-label="Лог генерации"></pre>
+  </div>
+  <aside class="control-column">
+   <section class="panel control-panel"><div class="section-heading"><h2>Управление потоком</h2><svg class="icon muted"><use href="#i-settings"/></svg></div><p class="small">Выберите источник для телеопа</p>
+    <div class="sources"><button id="video">Видео</button><button id="trace">TRACE</button><button id="idle">Стойка</button></div>
+    <div class="metric"><span>Камера</span><strong id="camera">Ожидание</strong></div><div class="metric"><span>Режим</span><strong id="mode">Ожидание</strong></div><div class="metric"><span>Генерация</span><strong id="generation">Готов к запросу</strong></div>
+    <div class="playback-progress"><div class="bar"><div id="progress"></div></div><div id="time" class="small">Движение ещё не выбрано</div></div>
+    <div class="stream-playback"><button id="stream-pause" class="small-button" disabled>Пауза потока</button><button id="stream-resume" class="small-button" disabled>Продолжить</button></div>
+    <div class="gamepad-hint"><div><kbd>R2 + A</kbd><span>Всё тело</span></div><div><kbd>R2 + X</kbd><span>Только руки</span></div></div>
+   </section>
+   <section class="panel planner-card"><details id="planner-panel" open><summary><span>Планировщик</span><svg class="icon"><use href="#i-settings"/></svg></summary><div id="planner-summary" class="planner-label">Подключение…</div>
+    <label>Источник плана<select id="planner-provider"><option value="local">Qwen · локально</option><option value="openai">OpenAI API</option><option value="codex">Codex · подписка ChatGPT</option></select></label>
+    <div id="openai-fields" hidden><label>Модель OpenAI<input id="openai-model" value="gpt-4.1-mini" maxlength="160" spellcheck="false" autocomplete="off"></label><label>API-ключ<input id="openai-key" type="password" autocomplete="off" spellcheck="false" placeholder="Введите ключ OpenAI API"></label><div id="openai-key-status" class="auth-status">Ключ не задан</div><p class="small">Ключ остаётся в памяти сервера. Генератор движения работает локально.</p></div>
+    <div id="codex-fields" hidden><label>Модель Codex · необязательно<input id="codex-model" maxlength="160" autocomplete="off" spellcheck="false" placeholder="По умолчанию Codex CLI"></label><div id="codex-auth-status" class="auth-status">Проверьте вход в Codex</div><button id="codex-check" class="small-button" type="button"><svg class="icon"><use href="#i-check"/></svg>Проверить вход Codex</button><p class="small">Работает через подписку ChatGPT. API-ключ не нужен. Первый вход: <code>codex login</code>.</p></div>
+    <div class="planner-actions"><button id="planner-save" class="small-button dark-button" type="button">Применить</button><button id="planner-clear" class="small-button" type="button" hidden>Удалить ключ</button></div><div id="planner-notice" class="small" role="status"></div>
+   </details></section>
+   <section class="panel settings-card"><details id="generation-settings"><summary><span>Параметры генерации</span><svg class="icon"><use href="#i-settings"/></svg></summary><div class="options"><label>Шаги диффузии<input id="steps" type="number" min="1" max="100" value="50"></label><label>Seed<input id="seed" type="number" min="0" max="4294967295" value="42"></label></div><label>Контакт со стопами<select id="refine"><option value="heel_toe">Пятка и носок</option><option value="none">Только сглаживание</option></select></label></details><p id="models" class="small models-status"></p><details class="connection-details"><summary>Подключение потока</summary><div class="endpoint"><span>UDP</span><code id="destination">—</code></div></details></section>
+   <div class="local-note"><span class="round-icon"><svg class="icon"><use href="#i-cube"/></svg></span><div><strong>Ваш локальный генератор</strong><p>Готовые траектории сохраняются для воспроизведения и обучения.</p></div></div>
+  </aside>
+ </div>
+ <footer><span>G1 deploy <span class="footer-separator">/</span> Motion Studio</span><span>TRACE · WBC <span class="footer-separator">·</span> <a href="/api/status" target="_blank">Состояние системы ↗</a></span></footer>
+</main>
+</div>
+<script src="/preview.js?v=20261028-studio2"></script>
+<script src="/voice.js?v=20261028-voice2"></script>
+<script src="/studio.js?v=20261028-voice2"></script>
+</body>
+</html>

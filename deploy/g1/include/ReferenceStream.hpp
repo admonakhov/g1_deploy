@@ -18,6 +18,9 @@ class ReferenceStream {
         Eigen::Quaterniond root;
         Eigen::Vector3d position{0.,0.,.7842};
         bool base_tracked=false;
+        Eigen::Vector3d linear_velocity_world=Eigen::Vector3d::Zero();
+        bool motion_reference=false;
+        TorsoReference torso;
         double time, source_time;
         int64_t index;
     };
@@ -79,6 +82,21 @@ class ReferenceStream {
         out.root = left.root.slerp(out.alpha, right.root).normalized();
         out.base_tracked=left.base_tracked&&right.base_tracked&&frames_.back().base_tracked;
         out.position=(1.-out.alpha)*left.position+out.alpha*right.position;
+        out.motion_reference=out.base_tracked&&left.motion_reference&&right.motion_reference&&frames_.back().motion_reference;
+        const double span=right.time-left.time;
+        if(time>=left.time&&time<right.time){
+            out.linear_velocity_world=(right.position-left.position)/span;
+            auto delta=right.root*left.root.conjugate();if(delta.w()<0.)delta.coeffs()*=-1.;
+            const Eigen::AngleAxisd aa(delta);out.root_angular_world=aa.axis()*aa.angle()/span;
+        }
+        if(out.motion_reference)out.linear_velocity_world=(1.-out.alpha)*left.linear_velocity_world+out.alpha*right.linear_velocity_world;
+        out.torso.valid=out.motion_reference&&left.torso.valid&&right.torso.valid;
+        if(out.torso.valid){
+            out.torso.position=(1.-out.alpha)*left.torso.position+out.alpha*right.torso.position;
+            out.torso.orientation=left.torso.orientation.slerp(out.alpha,right.torso.orientation).normalized();
+            out.torso.linear=(1.-out.alpha)*left.torso.linear+out.alpha*right.torso.linear;
+            out.torso.angular=(1.-out.alpha)*left.torso.angular+out.alpha*right.torso.angular;
+        }
         return out;
     }
     Reference sample_unlocked(double now) {
@@ -88,7 +106,7 @@ class ReferenceStream {
         out.delay = delay;
         out.stale = last_received_ < 0. || now - last_received_ > timeout_;
         out.stopped = stopped_;
-        if (out.stale || out.stopped) { out.ready = false; out.active.fill(false); out.dq.setZero(); }
+        if (out.stale || out.stopped) { out.ready = false; out.active.fill(false); out.dq.setZero(); out.motion_reference=false; out.linear_velocity_world.setZero(); out.torso.valid=false; }
         if (out.ready) { held_ = out.q; held_root_ = out.root; }
         return out;
     }
@@ -174,7 +192,7 @@ public:
                 frame.active[motor] = active[j] && values[j].is_number();
                 if (frame.active[motor]) {
                     frame.q[motor] = values[j].get<double>();
-                    if (!std::isfinite(frame.q[motor]) || std::abs(frame.q[motor]) > 10.) return reject("invalid_joint_value");
+                    if (!std::isfinite(frame.q[motor])) return reject("invalid_joint_value");
                 }
             }
             if (fallback) {
@@ -197,9 +215,32 @@ public:
                 if (!frame.root.coeffs().allFinite() || frame.root.norm() < .5 || frame.root.norm() > 1.5) return reject("invalid_root_quaternion");
                 frame.root.normalize();
                 frame.position=Eigen::Vector3d(qpos[0],qpos[1],qpos[2]);
-                if(!frame.position.allFinite()||frame.position.z()<.1||frame.position.z()>2.)return reject("invalid_base_position");
+                if(!frame.position.allFinite())return reject("invalid_base_position");
                 frame.base_tracked=true;
                 for(int i=0;i<12;++i)frame.base_tracked&=frame.active[i];
+            }
+            if(packet.value("reference_kind",std::string("camera"))=="motion"){
+                if(!frame.base_tracked||fallback)return reject("motion_requires_tracked_base_and_legs");
+                const auto velocity=packet.at("base_linear_velocity_world").get<std::vector<double>>();
+                if(velocity.size()!=3)return reject("invalid_motion_velocity");
+                frame.linear_velocity_world=Eigen::Vector3d(velocity[0],velocity[1],velocity[2]);
+                if(!frame.linear_velocity_world.allFinite())return reject("invalid_motion_velocity");
+                frame.motion_reference=true;
+            }
+            if(packet.contains("wbc_reference")){
+                const auto& anchor=packet.at("wbc_reference");
+                if(!frame.motion_reference||!std::all_of(frame.active.begin(),frame.active.end(),[](bool a){return a;})
+                    ||anchor.value("schema","")!="wbc-torso-v1"||anchor.value("body_name","")!="torso_link")return reject("invalid_wbc_anchor_contract");
+                auto vector=[&](const char* key){const auto v=anchor.at(key).get<std::vector<double>>();
+                    if(v.size()!=3)throw std::invalid_argument("invalid_wbc_anchor_vector");
+                    return Eigen::Vector3d(v[0],v[1],v[2]);};
+                frame.torso.position=vector("position_world");frame.torso.linear=vector("linear_velocity_world");frame.torso.angular=vector("angular_velocity_world");
+                const auto quat=anchor.at("quaternion_wxyz").get<std::vector<double>>();
+                if(quat.size()!=4)return reject("invalid_wbc_anchor_quaternion");
+                frame.torso.orientation=Eigen::Quaterniond(quat[0],quat[1],quat[2],quat[3]);
+                if(!frame.torso.position.allFinite()||!frame.torso.linear.allFinite()||!frame.torso.angular.allFinite()
+                    ||!frame.torso.orientation.coeffs().allFinite()||frame.torso.orientation.norm()<.5||frame.torso.orientation.norm()>1.5)return reject("invalid_wbc_anchor_values");
+                frame.torso.orientation.normalize();frame.torso.valid=true;
             }
             const std::string session = packet.value("stream_id", "legacy");
             const auto person = fallback ? person_ : packet.at("person_id");
@@ -215,6 +256,12 @@ public:
                     if (frame.active[i] && frame.q[i] != previous.q[i]) same = false;
                 if (packet.value("base_tracked", false) || fallback)
                     same &= std::abs(frame.root.dot(previous.root)) > 1. - 1e-10;
+                same &= frame.motion_reference==previous.motion_reference;
+                if(frame.motion_reference)same &= (frame.linear_velocity_world-previous.linear_velocity_world).norm()<1e-10;
+                same &= frame.torso.valid==previous.torso.valid;
+                if(frame.torso.valid)same &= (frame.torso.position-previous.torso.position).norm()<1e-10
+                    &&(frame.torso.linear-previous.torso.linear).norm()<1e-10&&(frame.torso.angular-previous.torso.angular).norm()<1e-10
+                    &&std::abs(frame.torso.orientation.dot(previous.torso.orientation))>1.-1e-10;
                 if (!same) return reject("changed_reference_hold");
                 // Keepalive does not create artificial camera frames or
                 // reduce interpolation delay to the UDP sender's period.
@@ -243,6 +290,7 @@ public:
             ++valid_poses_; last_valid_frame_ = frame.index; last_rejection_.clear();
             return true;
         } catch (const nlohmann::json::exception&) { return reject("malformed_or_missing_fields"); }
+          catch (const std::invalid_argument&) { return reject("invalid_wbc_anchor_vector"); }
     }
     Reference sample(double now) {
         std::lock_guard<std::mutex> lock(mutex_);

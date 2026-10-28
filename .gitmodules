@@ -1,3 +1,6 @@
 [submodule "vitpose"]
 	path = vitpose
 	url = https://github.com/JunkyByte/easy_ViTPose.git
+[submodule "TRACE"]
+	path = TRACE
+	url = https://github.com/Multimodal-Perception-Action/TRACE

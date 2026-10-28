@@ -8,6 +8,14 @@ int main(int argc,char** argv){try{
     using namespace teleop;using nlohmann::json;
     const std::string mode=argc>1?argv[1]:"walk";const auto root=std::filesystem::path(TELEOP_ROOT)/"deploy/g1/config";
     auto cfg=load_deployment(root/"config.yaml",root)["FSM"];
+    if(mode=="wbc_reference"){
+        OnnxPolicy model(std::filesystem::path(cfg["Teleop"]["policy_dir"].as<std::string>())/"params/policy.onnx",{{"obs",132}},29);
+        std::cout<<json({{"mode","raw WBC ONNX"}}).dump()<<std::endl;
+        for(std::string line;std::getline(std::cin,line);){const auto input=json::parse(line);
+            std::cout<<json({{"raw",model.run({{"obs",input.at("obs").get<std::vector<float>>()}})}}).dump()<<std::endl;
+        }
+        return 0;
+    }
     if(mode=="getup_reference"){
         // Tensor adapter only. Tests construct ROS2 observations/commands
         // independently and compare the final targets, including large hips.
@@ -37,7 +45,6 @@ int main(int argc,char** argv){try{
     bool begun=false;
     RecoveryInput recovery_input;PolicyFailureLatch failure;
     ReferenceStream camera_stream(50.,cfg["Teleop"]["buffer_delay_s"].as<double>(),cfg["Teleop"]["stream_timeout_s"].as<double>());
-    CommandLimits limits(std::string(TELEOP_ROOT)+"/deploy/g1/config/joint_limits.json");
     for(std::string line;std::getline(std::cin,line);){
         const auto input=json::parse(line);RobotState robot;
         for(int i=0;i<29;++i){robot.q[i]=input.at("q").at(i);robot.dq[i]=input.at("dq").at(i);}

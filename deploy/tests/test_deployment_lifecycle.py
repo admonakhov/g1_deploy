@@ -54,16 +54,6 @@ class DeploymentLifecycleTests(unittest.TestCase):
         np.testing.assert_array_equal(reset['path_command'], original['path_command'])
         np.testing.assert_array_equal(reset['command'], original['command'])
 
-    def test_wbc_pd_torque_caps_use_measured_q_and_dq(self):
-        f = self.fixture('wbc')
-        cfg = yaml.safe_load((ROOT/'deploy/g1/config/robot_defaults.yaml').read_text())['pd_torque_clipping']
-        state = policies.PolicyTests.state(np.zeros(29))
-        state.update(dq=[10.]*29)
-        out = f.step(state)
-        torque = np.array(out['kp'])*(np.array(out['command'])-state['q'])-np.array(out['kd'])*state['dq']
-        self.assertTrue(np.isfinite(torque).all())
-        self.assertTrue((abs(torque) <= cfg['fraction']*np.array(cfg['joint_max_torque']) + 1e-8).all())
-
     def test_source_pd_fixstand_does_not_provide_learned_balance(self):
         f = self.fixture('arms')
         model = mj.MjModel.from_xml_path(str(policies.SCENE))

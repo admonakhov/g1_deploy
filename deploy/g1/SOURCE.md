@@ -1,7 +1,8 @@
 # Deployment sources
 
-Only two policy bundles are deployed. They were copied unchanged from:
-`/home/ant/Robots/policy_deployment_ros2/robots/g1_29dof_ros2_deploy/config/policy/`.
+Three policy bundles are deployed. They were copied unchanged from:
+`policy_deployment_ros2/robots/g1_29dof_ros2_deploy/config/policy/`
+in the source repository. Provenance paths are repository-relative, without local usernames or home directories.
 
 - `vq/traj_loco` → `policies/traj_loco`, including both auxiliary networks.
   The SDK joint order, ten 75-value history frames, first-frame history padding,
@@ -19,8 +20,8 @@ Only two policy bundles are deployed. They were copied unchanged from:
 - Unitree RL Lab `4960b84732b0c2ec593dccbfe963fda1bcd7b1e3` supplies the
   SDK/DDS wrappers, Passive and configurable FSM infrastructure. The standard
   G1 main and CMake delegate to this deployment. Other G1 policies are removed.
-- `sim/g1_29dof.xml` and meshes were copied from the user's local
-  `/home/ant/Robots/Unitree/unitree_mujoco/unitree_robots/g1` for offline tests.
+- `sim/g1_29dof.xml` and meshes were copied from
+  `unitree_mujoco/unitree_robots/g1` for offline tests.
   Only the mesh location and the test scene are adapted. The BSD-3-Clause
   license is preserved in `sim/UNITREE_LICENSE`.
 - ARM64 ONNX Runtime source and binary hashes: `third_party/ONNXRUNTIME_SOURCE.md`.
@@ -29,4 +30,4 @@ Only two policy bundles are deployed. They were copied unchanged from:
 
 The GR00T/SONIC implementation and dependency were removed. This port uses
 native Unitree DDS, not ROS2, and adds bounded reference interpolation, observed
-body masks, measured-state entry and watchdog handling around the two policies.
+  body masks, measured-state entry and watchdog handling around the policies.

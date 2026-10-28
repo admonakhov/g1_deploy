@@ -22,6 +22,9 @@ dependencies = [
     "ultralytics==8.3.107",
 ]
 
+[project.optional-dependencies]
+motion = ["aiohttp>=3.11,<4", "vosk>=0.3.45,<0.4"]
+
 [tool.uv.sources]
 easy-vitpose = { path = "vitpose", editable = true }
 torch = { index = "pytorch-cpu" }

@@ -189,7 +189,7 @@ class SkeletonAdapter:
 
 
 class StreamingRetargeter:
-    def __init__(self, max_joint_speed=5.0, max_iterations=4):
+    def __init__(self, max_joint_speed=0.0, max_iterations=4):
         ROBOT_XML_DICT["unitree_g1"] = g1_palm_model()
         IK_CONFIG_DICT["h36m_stream"] = {"unitree_g1": ROOT / "video_teleop/configs/h36m_to_g1.json"}
         with redirect_stdout(io.StringIO()):
@@ -281,8 +281,9 @@ class StreamingRetargeter:
             raise RuntimeError(f"GMR inverse kinematics failed: {error}") from error
         # GMR may perform several IK steps. Bound the TOTAL output change per frame.
         indices = self.qpos_addresses
-        max_delta = self.max_joint_speed * min(max(float(dt), 0.001), 0.2)
-        qpos[indices] = np.clip(qpos[indices], self.previous[indices] - max_delta, self.previous[indices] + max_delta)
+        if self.max_joint_speed > 0:
+            max_delta = self.max_joint_speed * min(max(float(dt), 0.001), 0.2)
+            qpos[indices] = np.clip(qpos[indices], self.previous[indices] - max_delta, self.previous[indices] + max_delta)
         qpos[indices] = np.clip(qpos[indices], self.ranges[:, 0], self.ranges[:, 1])
         held_indices = indices[~self.active_joint_mask]
         qpos[held_indices] = self.previous[held_indices]

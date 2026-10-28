@@ -5,7 +5,6 @@ struct State_Policy::Engine{
     teleop::GetUpPolicy getup;
     std::unique_ptr<teleop::WbcControl> whole,arms;
     teleop::WbcControl* wbc=nullptr;
-    teleop::CommandLimits limits{std::string(TELEOP_ROOT)+"/deploy/g1/config/joint_limits.json"};
     teleop::ReferenceStream stream;
     std::atomic<bool> running{false},completed{false},recover_walk{false};
     teleop::PolicyFailureLatch failure;
@@ -57,7 +56,7 @@ struct State_Policy::Engine{
                     target=wbc->step(robot,ref,now,false); // Orientation check uses this state's flag/limit above.
                     if(wbc->waiting_for_camera()!=camera_waiting){
                         camera_waiting=wbc->waiting_for_camera();
-                        spdlog::info("WBC: {}",camera_waiting?"waiting for camera poses; returning smoothly to the initial stance, balance remains active":"camera reference ready; resuming teleop smoothly");
+                        spdlog::info("WBC: {}",camera_waiting?"waiting for references; initial stance, WBC remains active":"WBC reference ready; direct tracking without filtering");
                     }
                 }
                 const double elapsed=1000.*(teleop::steady_seconds()-started);total_ms+=elapsed;max_ms=std::max(max_ms,elapsed);max_period=std::max(max_period,1000.*(now-previous));previous=now;++ticks;

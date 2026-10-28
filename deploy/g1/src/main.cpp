@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
         options.add_options()("help,h", "Show help")
             ("network,n", po::value<std::string>()->default_value("lo"), "DDS network interface")
             ("domain", po::value<int>()->default_value(0), "DDS domain (Unitree / unitree_mujoco default 0)")
-            ("reference-smoothing", po::value<double>(), "WBC reference EMA time constant in seconds (overrides YAML)")
+            ("reference-smoothing", po::value<double>(), "Removed WBC filter; only 0 is accepted for compatibility")
             ("config", po::value<std::string>()->default_value(std::string(TELEOP_ROOT) + "/deploy/g1/config/config.yaml"), "Unitree FSM config.yaml")
             ("deploy", po::value<std::string>(), "Override shared deploy.yaml")
             ("check-config", "Validate FSM, policy paths and model contracts without DDS");
@@ -38,11 +38,8 @@ int main(int argc, char** argv) {
                 unitree::common::dsl::Parser parser(transition.second.as<std::string>());
                 auto ast=parser.Parse(); unitree::common::dsl::Compile(*ast);
             }
-            if (args.count("reference-smoothing") && (type=="WbcTeleop" || type=="TrajLoco")) {
-                const double smoothing=args["reference-smoothing"].as<double>();
-                if (!std::isfinite(smoothing)||smoothing<0.) throw std::runtime_error("Invalid reference smoothing time");
-                param::config["FSM"][name]["reference_smoothing_s"]=smoothing;
-            }
+            if (args.count("reference-smoothing") && args["reference-smoothing"].as<double>()!=0.)
+                throw std::runtime_error("WBC reference filtering was removed; omit --reference-smoothing");
         }
         if (args.count("check-config")) {
             for (const auto& entry : enabled) {

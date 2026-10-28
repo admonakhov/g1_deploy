@@ -21,6 +21,7 @@ public:
             for(int i=0;i<15;++i) frame.active[i]=false;
             frame.root=Eigen::Quaterniond::Identity();
             frame.base_tracked=false;
+            frame.motion_reference=false;frame.linear_velocity_world.setZero();frame.root_angular_world.setZero();frame.torso.valid=false;
         }
         return frames;
     }

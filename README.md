@@ -58,14 +58,42 @@ The deployment includes three policy bundles:
 Configuration files:
 
 - [`config.yaml`](deploy/g1/config/config.yaml): FSM states, button mappings, transitions, policy paths, standing poses, gains, and per-state settings.
-- [`deploy.yaml`](deploy/g1/config/deploy.yaml): shared runtime settings, including frequency, DDS state freshness, camera UDP endpoint, interpolation, and reference smoothing.
+- [`deploy.yaml`](deploy/g1/config/deploy.yaml): shared runtime settings, including frequency, DDS state freshness, camera UDP endpoint and interpolation.
 - [`robot_defaults.yaml`](deploy/g1/config/robot_defaults.yaml): robot defaults and PD torque clipping parameters.
 - [`initial_pose.json`](deploy/g1/config/initial_pose.json): the initial WBC reference used by the camera sender when tracking is unavailable.
 - [`policies/`](deploy/g1/policies): model weights and their original policy parameters. Copied source file checksums are recorded in `SOURCE.json`.
 
 Use `--config /path/to/config.yaml` and `--deploy /path/to/deploy.yaml` to select another configuration.
 
-## Receive poses from video or a live camera stream
+## Stream motion references to WBC
+
+### Generate motions with TRACE
+
+The [TRACE motion bridge](motion_teleop/README.md) adds a local web interface for text-to-motion generation and source selection. Generated G1 motions and video retargeting feed the same WBC Teleop / TeleopArms policy states.
+
+```bash
+bash motion_teleop/setup.sh auto
+./uv run --locked --extra motion python -m motion_teleop.server
+```
+
+Open **http://127.0.0.1:8765**. TRACE uses a separate uv environment with Intel XPU/CPU selection and CPU fallback. Generated 20 Hz clips are interpolated to the deployment's **50 Hz** stream. The controller keeps running while generation completes.
+
+Motion Studio supports local Qwen + TRACE LoRA, an OpenAI API planner, or a **Codex ChatGPT subscription without an API key**. The motion generator, WBC and training NPZ export remain local. Select the planner in the web panel; only the OpenAI API option needs an API key. See [planner setup](motion_teleop/README.md#choose-a-language-planner-local-qwen-or-openai-api).
+
+The panel also supports **Russian voice commands** with local CPU speech recognition. Click **Голосовая команда**, allow microphone access, and say a motion description, **«отмени генерацию»**, **«включи видео»**, **«стойка»**, **«стоп»**, or **«продолжи»**. Stop/resume control the TRACE reference timeline while WBC remains active. Disable immediate voice execution to inspect the transcription before generating; automatic deployment playback has its own checkbox. Audio is not saved or sent to a speech cloud. See [voice setup and commands](motion_teleop/README.md#russian-voice-commands).
+
+For an existing installation, add the Russian voice model with:
+
+```bash
+./uv sync --locked --extra motion
+./uv run --locked --extra motion python -m motion_teleop.setup_voice
+```
+
+To route video through the source selector, use `--web http://127.0.0.1:8765` instead of `--udp`. The bridge becomes the sole UDP sender. See the [installation, API, and streaming guide](motion_teleop/README.md).
+
+Each successful generation automatically exports a **wbc-mjlab training NPZ at 50 Hz**, with full G1 link poses and velocities, to **`motions/npz/JOB_ID.npz`**. Prompt/settings/provenance metadata goes to `motions/metadata/JOB_ID.json`. Clips can also be downloaded from the web library. Use the `motions/` dataset directory with `wbc-mjlab-train --dataset-path` to train or fine-tune a compatible policy. The complete `motions/` directory is excluded from Git. Intermediate TRACE files remain in the ignored `.cache/trace-jobs/` workspace.
+
+### Direct video input
 
 Teleop accepts **streamed G1 pose references over UDP** using the `gmr-g1-v1` format. The included video pipeline can produce these references from a video file, a local camera, or a network video stream. Another producer can use the same protocol to supply robot joint angles, timestamps, and tracked-joint masks.
 
@@ -117,13 +145,29 @@ To run the sender on another computer, set `udp_host` in `deploy.yaml` to the co
 ### Streaming behavior
 
 - The sender publishes at **50 Hz**, independently of camera inference FPS. Repeated references retain the source frame identity; the controller interpolates completed poses without predicting future movement.
-- **Teleop waits indefinitely for pose data.** Missing initial frames, a stream timeout, or a sender `stopped` message leave Teleop/TeleopArms active. WBC continues balance control with the initial stance. Incoming poses resume teleop smoothly without selecting the mode again.
-- `stream_timeout_s` controls when an old reference is replaced by the initial stance. It does not switch the policy. Reference changes are smoothed and limited to **5 rad/s per joint**; this limit applies to reference motion, not learned balance corrections.
+- **Teleop waits indefinitely for pose data.** Missing initial frames, a stream timeout, or a sender `stopped` message leave Teleop/TeleopArms active. WBC continues balance control with the initial stance. Incoming poses resume teleop directly without selecting the mode again.
+- `stream_timeout_s` controls when an old reference is replaced by the initial stance. It does not switch the policy. WBC consumes references directly at 50 Hz, without EMA, slew limiting, entry blending, height/velocity caps or motor-position clipping. See the [WBC reference audit](deploy/WBC_REFERENCE_AUDIT.md) for the complete contract and remaining system constraints.
 - Unavailable body parts are excluded from camera goals. A leg requires its complete joint chain to be observed. Arms mode keeps camera goals out of the legs and torso.
 - The sender retries an unavailable camera or file and sends the initial reference while waiting. At the end of a video, it continues sending that reference without automatically replaying the file.
 - Model or receiver errors still use the configured recovery to Walk. Invalid robot state, lost DDS LowState, and the Passive button retain their existing handling.
 
 Remove `--no-display` to view one window containing the full video frame and the human skeleton. There is no robot rendering or automatic image crop. Use **Tab** to select another person and **Q/Esc** to quit. `--profile` reports processing times and FPS.
+
+## Private data and Git
+
+Codex CLI is an **external, separately installed dependency**. The repository contains its planner adapter, not a copy of your CLI installation or login. Keep Codex authentication, configuration, sessions and history in the CLI's normal user directory outside this checkout; do not copy them into the project. The adapter lets the CLI manage authentication and does not read or save its tokens. Never put API keys in prompts, configuration committed to Git, or recorded shell commands.
+
+The `.gitignore` excludes Codex home directories and downloaded executables, authentication/credential files, `.env` secrets, private keys, local agent/editor settings, caches, environments, logs, databases, recordings, generated NPZ data and the entire `motions/` directory. Downloaded model caches and temporary build files are also excluded. Source code, shared deployment configuration, the lockfile, and the intentionally bundled ONNX deployment policies remain versioned. Sanitized `.env.example` / `.env.sample` templates may be shared without real credentials.
+
+Review the exact files before committing or sharing:
+
+```bash
+git status --short
+git diff --cached --stat
+git diff --cached
+```
+
+For a local file, `git check-ignore -v PATH` shows the matching exclusion rule. Ignore rules do not remove files already tracked or committed, and they do not clean Git history. Generated motion descriptions, training metadata and recordings can contain personal information; keep custom output directories under `motions/` or explicitly ignore them too.
 
 ## Validation
 
@@ -131,6 +175,7 @@ Remove `--no-display` to view one window containing the full video frame and the
 ctest --test-dir deploy/g1/build --output-on-failure
 ./uv run python -m unittest discover -s deploy/tests -v
 ./uv run python -m unittest discover -s video_teleop/tests -v
+./uv run --locked --extra motion python -m unittest discover -s motion_teleop/tests -v
 ```
 
 The offline deployment checks use the real ONNX policies and MuJoCo without publishing commands to a physical robot.
@@ -142,3 +187,5 @@ See the [detailed deployment guide](deploy/g1/README.md) and [video teleoperatio
 The deployment framework is adapted from the original **[Unitree RL Lab deployment](https://github.com/unitreerobotics/unitree_rl_lab)**. Its minimal FSM, DDS, and gamepad support is included in `deploy/g1/third_party/unitree_deploy/` with the original Apache-2.0 license. Policy integration also follows the source `policy_deployment_ros2` implementation; provenance is recorded with the bundled configuration and policies.
 
 Human pose estimation uses **[Easy-ViTPose](https://github.com/JunkyByte/easy_ViTPose)**, based on **[ViTPose](https://github.com/ViTAE-Transformer/ViTPose)**.
+
+Text-to-motion generation uses **[TRACE](https://github.com/Multimodal-Perception-Action/TRACE)** through its original local inference pipeline.

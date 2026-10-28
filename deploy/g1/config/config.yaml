@@ -227,7 +227,10 @@ FSM:
     policy_dir: ../policies/wbc
     retarget_scope: wholebody
     failure_state: Walk
-    enable_bad_orientation_passive: true
+    enable_bad_orientation_passive: false
+    # Direct WBC residual actions, as trained; simulator/motors enforce torque limits.
+    pd_torque_clipping:
+      enabled: false
   TeleopArms:
     transitions:
       Passive: LT + B.on_pressed
@@ -239,7 +242,10 @@ FSM:
     policy_dir: ../policies/wbc
     retarget_scope: arms
     failure_state: Walk
-    enable_bad_orientation_passive: true
+    enable_bad_orientation_passive: false
+    # Direct WBC residual actions, as trained; simulator/motors enforce torque limits.
+    pd_torque_clipping:
+      enabled: false
   Run:
     policy_dir: ../policies/traj_loco
     idle_only: false

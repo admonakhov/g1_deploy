@@ -2,7 +2,7 @@
 
 Held observations retain their frame/time so controller interpolation still
 uses the camera cadence. Initial references are explicit commands, not inferred
-body parts. Loss of this process or transport still expires the robot watchdog.
+body parts. Missing references leave WBC active with its initial stance.
 """
 
 from copy import deepcopy
@@ -214,3 +214,44 @@ class UDPPublisher:
 
     def close(self):
         self.socket.close()
+
+
+class HTTPPublisher:
+    """Persistent HTTP pose upload; reconnect without terminating camera capture."""
+
+    def __init__(self, address):
+        import http.client
+        from urllib.parse import urlsplit
+        url = urlsplit(address)
+        if url.scheme not in ("http", "https") or not url.hostname or url.username or url.password or url.query or url.fragment:
+            raise ValueError("Web destination must be an http(s) server URL")
+        self.connection_type = http.client.HTTPSConnection if url.scheme == "https" else http.client.HTTPConnection
+        self.host, self.port = url.hostname, url.port
+        self.path = url.path.rstrip("/") + "/api/pose"
+        self.connection = None
+        self.retry_at = 0.
+        self.last_error = None
+
+    def publish(self, packet):
+        import http.client
+        if time.monotonic() < self.retry_at:
+            return
+        try:
+            if self.connection is None:
+                self.connection = self.connection_type(self.host, self.port, timeout=.3)
+            payload = json.dumps(packet, allow_nan=False, separators=(",", ":")).encode()
+            self.connection.request("POST", self.path, body=payload, headers={"Content-Type": "application/json"})
+            response = self.connection.getresponse()
+            body = response.read()
+            if response.status != 200:
+                raise ValueError(f"Motion bridge rejected pose ({response.status}): {body.decode(errors='replace')[:200]}")
+            self.last_error = None
+        except (OSError, http.client.HTTPException) as error:
+            self.last_error = str(error)
+            self.close()
+            self.retry_at = time.monotonic() + .5
+
+    def close(self):
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None

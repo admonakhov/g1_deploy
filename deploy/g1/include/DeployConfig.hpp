@@ -10,6 +10,10 @@
 #include "GetUpPolicy.hpp"
 
 namespace teleop {
+inline void validate_direct_wbc(const YAML::Node& cfg){
+    for(const auto key:{"transition_duration_s","reference_smoothing_s","reference_max_speed","max_joint_speed"})
+        if(cfg[key]&&cfg[key].as<double>()!=0.)throw std::runtime_error(std::string("Removed WBC reference processing parameter: ")+key);
+}
 inline YAML::Node load_deployment(const std::filesystem::path& file,const std::filesystem::path& /*project*/,const std::filesystem::path& override_deploy={}){
     const auto canonical=std::filesystem::canonical(file);const auto base=canonical.parent_path();
     auto config=YAML::LoadFile(canonical.string());auto fsm=config["FSM"],enabled=fsm["_"];
@@ -30,9 +34,9 @@ inline YAML::Node load_deployment(const std::filesystem::path& file,const std::f
     if(!deploy["pd_torque_clipping"])deploy["pd_torque_clipping"]=YAML::Clone(defaults["pd_torque_clipping"]);
     config["deployment"]=YAML::Clone(deploy);
     if(!std::isfinite(deploy["step_dt"].as<double>())||std::abs(deploy["step_dt"].as<double>()-.02)>1e-8||deploy["policy_hz"].as<int>()!=50)throw std::runtime_error("Policies require step_dt=0.02 and policy_hz=50");
-    for(const auto key:{"transition_duration_s","reference_max_speed","max_joint_speed"}){const auto x=deploy[key].as<double>();if(!std::isfinite(x)||x<=0.)throw std::runtime_error(std::string("Invalid runtime parameter: ")+key);}
-    const double smoothing=deploy["reference_smoothing_s"].as<double>(),delay=deploy["buffer_delay_s"].as<double>(),timeout=deploy["stream_timeout_s"].as<double>();
-    if(!std::isfinite(smoothing)||smoothing<0.||!std::isfinite(delay)||delay<0.||!std::isfinite(timeout)||timeout<=delay+.02)throw std::runtime_error("Invalid camera smoothing/buffer/timeout");
+    validate_direct_wbc(deploy);
+    const double delay=deploy["buffer_delay_s"].as<double>(),timeout=deploy["stream_timeout_s"].as<double>();
+    if(!std::isfinite(delay)||delay<0.||!std::isfinite(timeout)||timeout<=delay+.02)throw std::runtime_error("Invalid camera buffer/timeout");
     in_addr address{};const int port=deploy["udp_port"].as<int>();if(port<1||port>65535||inet_pton(AF_INET,deploy["udp_host"].as<std::string>().c_str(),&address)!=1)throw std::runtime_error("Invalid camera UDP endpoint");
     std::set<int> ids;std::map<std::string,std::string> shared_paths;
     for(const auto& e:enabled){const auto name=e.first.as<std::string>(),type=e.second["type"].as<std::string>(name);const int id=e.second["id"].as<int>();
@@ -71,13 +75,14 @@ inline YAML::Node load_deployment(const std::filesystem::path& file,const std::f
             runtime["idle_only"]=state["idle_only"].as<bool>(false);
             if(first){TrajLocoPolicy validate(directory);}
         }else{auto cfg=YAML::LoadFile((directory/"params/config.yaml").string());const auto params=wbc_params(cfg);
+            validate_direct_wbc(runtime);
             const auto fallback=state["failure_state"].as<std::string>("Walk");
             if(fallback!="Walk"||!enabled[fallback]||!state["transitions"][fallback])throw std::runtime_error("Teleop failure_state must be Walk and present in the FSM graph");
             runtime["failure_state"]=fallback;
             if((params.defaults-standing()).cwiseAbs().maxCoeff()>1e-8)throw std::runtime_error("WBC default/fallback stance mismatch");
             if(!std::filesystem::is_regular_file(directory/"params/policy.onnx"))throw std::runtime_error("Missing WBC model");
             CameraReferenceScope validate(runtime["retarget_scope"].as<std::string>("wholebody"));
-            const double height=runtime["wbc_base_height"].as<double>();if(!std::isfinite(height)||height<.4||height>1.3)throw std::runtime_error("Invalid WBC torso reference height");
+            const double height=runtime["wbc_base_height"].as<double>();if(!std::isfinite(height))throw std::runtime_error("Invalid WBC torso reference height");
             if(first){WbcPolicy validate(directory);}
         }
         fsm[name]=runtime;

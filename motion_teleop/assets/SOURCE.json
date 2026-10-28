@@ -1,0 +1,9 @@
+{
+  "source_project": "wbc-mjlab",
+  "source_file": "src/wbc_mjlab/robots/g1/xmls/g1.xml",
+  "source_sha256": "56539bc76eadb05dd439c47de94df52130ea8fa243d08bdddd9cbc32dd4c78a0",
+  "revision": "c08788b57fe60bec5be096ff1d97c5c51f5dd1eb",
+  "kinematics_sha256": "fc8a2071b140bfe3f5769dc0c8e467d069389c07a2653fb30270b6134af78266",
+  "description": "Exact body, inertial and joint tree. Rendering, contacts, sensors and actuators omitted; all link origins and joint axes retained.",
+  "license": "Apache-2.0"
+}

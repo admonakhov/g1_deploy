@@ -1,8 +1,8 @@
 # ONNX Runtime ARM64 distribution
 
 - Version: 1.23.2, Linux AArch64, CPU inference.
-- Copied unchanged from the user-provided local directory:
-  `/home/ant/Robots/policy_deployment_ros2/thirdparty/onnxruntime-linux-aarch64-1.23.2`.
+- Copied unchanged from the source repository directory:
+  `policy_deployment_ros2/thirdparty/onnxruntime-linux-aarch64-1.23.2`.
 - Upstream: https://github.com/microsoft/onnxruntime/releases/tag/v1.23.2
 - Bundled `GIT_COMMIT_ID`: `a83fc4d58cb48eb68890dd689f94f28288cf2278`.
 - Microsoft MIT `LICENSE`, `ThirdPartyNotices.txt`, headers, libraries and
